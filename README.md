@@ -63,9 +63,7 @@ You can customize the settings of the application from the sidebar. You can choo
 
 This application uses several external libraries and resources:
 
-- **Langchain**: The core functionalities of this application, such as the voice assistant and the PDF question-answering feature, are powered by Langchain. Langchain is a powerful tool for building
-
- conversational AI applications. More information can be found on their [website](https://www.langchain.com/).
+- **Langchain**: The core functionalities of this application, such as the voice assistant and the PDF question-answering feature, are powered by Langchain. Langchain is a powerful tool for building conversational AI applications. More information can be found on their [website](https://www.langchain.com/).
 
 - **OpenAI**: This application uses OpenAI's GPT-3 and GPT-4 models for natural language processing tasks, DALL·E for image generation, and Whisper for speech transcription. More information can be found on their [website](https://www.openai.com/).
 
