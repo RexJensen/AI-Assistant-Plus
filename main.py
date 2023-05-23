@@ -11,6 +11,8 @@ from pynput import keyboard
 from PyPDF2 import PdfReader
 from elevenlabs import voices, generate, set_api_key, play, save, stream
 
+from streamlit_chat import message
+
 from langchain.prompts import PromptTemplate
 from langchain.agents import Tool, AgentType, initialize_agent, load_tools
 from langchain.memory import ConversationBufferMemory
@@ -23,6 +25,9 @@ from langchain.vectorstores import FAISS
 from langchain.chains.question_answering import load_qa_chain
 from langchain.chains import LLMChain
 from langchain.callbacks import get_openai_callback
+
+import guidance
+import re
 
 # Set recording parameters
 DURATION = 3   # duration of each recording in seconds
@@ -115,13 +120,15 @@ def voice_assistant():
             assistant_message = agent.run(input_dict)
             st.session_state['chat_log'].append(("Assistant", assistant_message))
             play_generated_audio(assistant_message)
+            
 
     # Display chat log
     if 'chat_log' not in st.session_state:
         st.session_state['chat_log'] = []
 
     for speaker, message in st.session_state['chat_log']:
-        st.write(f"{speaker}: {message}")
+        #st.write(f"{speaker}: {message}")
+        
 
     # Clear conversation button
     if st.button('Clear Conversation'):
@@ -243,11 +250,88 @@ def dall_e_generator():
                 for x, data in enumerate(response['data']):
                     st.image(data['url'], caption='pr')
 
+
+def run_plan_maker():
+    st.sidebar.title('Settings')
+    model_name = st.sidebar.selectbox('Choose the model for the chain', [
+                                      'gpt-4', 'gpt-3.5-turbo'], help="GPT-4 is a better model but slower.")
+
+    # UI elements
+    st.title('Plan Maker 📝🤖')
+    # st.image('plan_maker_image.jpg', use_column_width=True)  # Add an image (replace 'plan_maker_image.jpg' with your image file)
+
+    st.markdown("""
+    Welcome to the Plan Maker! This application is powered by Microsoft's guidance framework and allows you to generate a plan for any topic. 
+    Simply enter the thing you want a plan for, and our AI will generate a plan for you. You can view the generated plan and start a new one at any time.
+    """)
+
+    st.text_input("What do you want a plan for?", key="Plan_subject")
+    os.environ['OPENAI_API_KEY'] = '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'
+
+    guidance.llm = guidance.llms.OpenAI("gpt-4")
+
+    def parse_best_plan(prosandcons, options):
+        best = re.search(r'Best=(\d+)', prosandcons)
+        if not best:
+            best = re.search(r'Best.*?(\d+)', 'Best= option is 3')
+        if best:
+            best = int(best.group(1))
+        else:
+            best = 0
+        return options[best]
+
+    create_plan = guidance('''
+        {{#system~}}
+        You are a helpful assistant.
+        {{~/system}}
+
+
+        {{#user~}}
+        I want to {{goal}}.
+        {{~! generate potential options ~}}
+        Can you please generate one option for how to accomplish this?
+        Please make the option very short, at most one line.
+        {{~/user}}
+
+        {{#assistant~}}
+        {{gen 'options' n=5 temperature=1.0 max_tokens=600}}
+        {{~/assistant}}
+
+
+        {{#user~}}
+        I want to {{goal}}.
+
+        Can you please comment on the pros and cons of each of the following options, and then pick the best option?
+        ---{{#each options}}
+        Option {{@index}}: {{this}}{{/each}}
+        ---
+        Please discuss each option very briefly (one line for pros, one for cons), and end by saying Best=X, where X is the best option.
+        {{~/user}}
+
+        {{#assistant~}}
+        {{gen 'prosandcons' temperature=0.0 max_tokens=600}}
+        {{~/assistant}}
+
+        {{#user~}}
+        I want to {{goal}}.
+        Here is my plan:
+        {{parse_best prosandcons options}}
+        Please elaborate on this plan, and tell me how to best accomplish it.
+        {{~/user}}
+        {{#assistant~}}
+        {{gen 'plan' max_tokens=500}}
+        {{~/assistant}}''')
+    if st.session_state.Plan_subject is not None:
+        out = create_plan(goal=st.session_state.Plan_subject,
+                          parse_best=parse_best_plan)
+        st.write(out['plan'])
+
+
 def main():
     st.set_page_config(page_title='Voice Assistant', page_icon="🎙️", layout='wide')
 
     # Create a navigation menu
-    page = st.sidebar.radio('Navigation', ['Voice Assistant', 'Ask your PDF', 'DALL·E Generator'])
+    page = st.sidebar.radio('Navigation', ['Voice Assistant', 'Ask your PDF', 'DALL·E Generator','Plan Maker'])
 
     if page == 'Voice Assistant':
         voice_assistant()
@@ -255,8 +339,9 @@ def main():
         ask_your_pdf()
     elif page == 'DALL·E Generator':
         dall_e_generator()
+    elif page == 'Plan Maker':
+        run_plan_maker()
 
 if __name__ == '__main__':
     main()
-
 
