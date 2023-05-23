@@ -128,7 +128,7 @@ def voice_assistant():
 
     for speaker, message in st.session_state['chat_log']:
         #st.write(f"{speaker}: {message}")
-        
+
 
     # Clear conversation button
     if st.button('Clear Conversation'):
@@ -266,7 +266,6 @@ def run_plan_maker():
     """)
 
     st.text_input("What do you want a plan for?", key="Plan_subject")
-    os.environ['OPENAI_API_KEY'] = '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'
 
     guidance.llm = guidance.llms.OpenAI("gpt-4")
 
