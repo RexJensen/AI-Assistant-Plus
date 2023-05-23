@@ -127,7 +127,7 @@ def voice_assistant():
         st.session_state['chat_log'] = []
 
     for speaker, message in st.session_state['chat_log']:
-        #st.write(f"{speaker}: {message}")
+        st.write(f"{speaker}: {message}")
 
 
     # Clear conversation button
