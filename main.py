@@ -119,7 +119,7 @@ def voice_assistant():
             }
             assistant_message = agent.run(input_dict)
             st.session_state['chat_log'].append(("Assistant", assistant_message))
-            play_generated_audio(assistant_message)
+            play_generated_audio(assistant_message["Assistant"])
             
 
     # Display chat log
@@ -267,7 +267,7 @@ def run_plan_maker():
 
     st.text_input("What do you want a plan for?", key="Plan_subject")
 
-    guidance.llm = guidance.llms.OpenAI("gpt-4")
+    guidance.llm = guidance.llms.OpenAI(model_name)
 
     def parse_best_plan(prosandcons, options):
         best = re.search(r'Best=(\d+)', prosandcons)
@@ -325,12 +325,61 @@ def run_plan_maker():
                           parse_best=parse_best_plan)
         st.write(out['plan'])
 
+def expertAdvice():
+    st.sidebar.title('Settings')
+    model_name = st.sidebar.selectbox('Choose the model for the chain', [
+                                      'gpt-4', 'gpt-3.5-turbo'], help="GPT-4 is a better model but slower.")
+
+    # UI elements
+    st.title('Expert Advice 💻🧠')
+    # st.image('plan_maker_image.jpg', use_column_width=True)  # Add an image (replace 'plan_maker_image.jpg' with your image file)
+
+    st.markdown("""
+    Welcome to the Expert Advice! This application is powered by Microsoft's guidance framework and allows you to get expert advice on any topic. 
+    Simply enter the thing you want expert advice about, and our AI will choose experts for you and have them work together to answer the question.
+    """)
+
+
+    expert_advice = guidance(
+        '''
+        {{#system~}}
+        You are a marketing director at a large .
+        {{~/system}}
+
+
+        {{#user~}}
+        I want a response to the following question:
+        {{query}}
+        Who are 3 world-class experts (past or present) who would be great at answering this?
+        Please don't answer the question or comment on it yet.
+        {{~/user}}
+
+        {{#assistant~}}
+        {{gen 'experts' temperature=0 max_tokens=300}}
+        {{~/assistant}}
+
+        {{#user~}}
+        Great, now please answer the question as if these experts had collaborated in writing a joint anonymous answer.
+        In other words, their identity is not revealed, nor is the fact that there is a panel of experts answering the question.
+        If the experts would disagree, just present their different positions as alternatives in the answer itself (e.g. 'some might argue... others might argue...').
+        Please start your answer with ANSWER:
+        {{~/user}}
+
+        {{#assistant~}}
+        {{gen 'answer' temperature=0 max_tokens=500}}
+        {{~/assistant}}''')
+
+    guidance.llm = guidance.llms.OpenAI(model_name)
+    st.text_input("What do you want to ask the experts? ", key='eq')
+    if st.session_state.eq is not None:
+        st.write(expert_advice(query=st.session_state.eq)['experts'])
+        st.write(expert_advice(query=st.session_state.eq)['answer'])
 
 def main():
     st.set_page_config(page_title='Voice Assistant', page_icon="🎙️", layout='wide')
 
     # Create a navigation menu
-    page = st.sidebar.radio('Navigation', ['Voice Assistant', 'Ask your PDF', 'DALL·E Generator','Plan Maker'])
+    page = st.sidebar.radio('Navigation', ['Voice Assistant', 'Ask your PDF', 'DALL·E Generator','Plan Maker','Expert Advice'])
 
     if page == 'Voice Assistant':
         voice_assistant()
@@ -340,6 +389,8 @@ def main():
         dall_e_generator()
     elif page == 'Plan Maker':
         run_plan_maker()
+    elif page == 'Expert Advice':
+        expertAdvice()
 
 if __name__ == '__main__':
     main()
